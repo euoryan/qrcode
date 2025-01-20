@@ -7,6 +7,8 @@
     <link rel="icon" type="image/png" href="assets/images/favicon/euoryan.png">
     <title>QR Code - Maker</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -177,6 +179,77 @@
             height: 16px;
         }
 
+        .import-section {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #161b22;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .file-input-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 0.75rem;
+            background-color: #0d1117;
+            border: 1px dashed #30363d;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .file-input-label:hover {
+            border-color: #58a6ff;
+        }
+
+        .bulk-download-button {
+            background-color: #238636;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .bulk-download-button.active {
+            display: block;
+        }
+
+        .bulk-download-button:hover {
+            background-color: #2ea043;
+        }
+
+        #importPreview {
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .preview-item {
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background-color: #0d1117;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
         h1, h2 {
             color: #c9d1d9;
             margin-bottom: 1rem;
@@ -233,6 +306,20 @@
             <button onclick="generateQR()">Gerar QR Code</button>
         </div>
 
+        <div class="import-section">
+            <h2>Importar Excel</h2>
+            <div class="file-input-container">
+                <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls">
+                <label for="excelFile" class="file-input-label">
+                    Selecione ou arraste um arquivo Excel
+                </label>
+            </div>
+            <div id="importPreview"></div>
+            <button id="bulkDownload" class="bulk-download-button">
+                Baixar todos os QR Codes (ZIP)
+            </button>
+        </div>
+
         <div class="qr-section" id="qrcode"></div>
         <div class="download-buttons" id="downloadButtons">
             <button class="download-button" onclick="downloadQR('png')">
@@ -260,7 +347,11 @@
     </div>
 
     <script>
-        // Função para salvar no localStorage
+        // Variáveis globais
+        let history = loadHistory();
+        let importedData = [];
+
+        // Funções do histórico
         function saveHistory(history) {
             try {
                 localStorage.setItem('qrHistory', JSON.stringify(history));
@@ -269,7 +360,6 @@
             }
         }
 
-        // Função para carregar do localStorage
         function loadHistory() {
             try {
                 const saved = localStorage.getItem('qrHistory');
@@ -280,7 +370,6 @@
             }
         }
 
-        // Função para copiar texto para a área de transferência
         async function copyToClipboard(text, button) {
             try {
                 await navigator.clipboard.writeText(text);
@@ -294,8 +383,6 @@
                 alert('Erro ao copiar o link');
             }
         }
-
-        let history = loadHistory();
 
         function generateQR() {
             const title = document.getElementById('title').value.trim();
@@ -329,7 +416,6 @@
                 margin: 2
             });
 
-            // Add to history
             const newEntry = { 
                 title, 
                 url, 
@@ -366,44 +452,147 @@
         }
 
         function downloadQR(format) {
-    const qrDiv = document.querySelector('#qrcode');
-    const canvas = qrDiv.querySelector('canvas');
-    
-    if (format === 'png' && canvas) {
-        const link = document.createElement('a');
-        link.download = 'qrcode.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    } else if (format === 'svg') {
-        // Criar SVG manualmente a partir do canvas
-        const svgNS = "http://www.w3.org/2000/svg";
-        const svg = document.createElementNS(svgNS, "svg");
-        const image = document.createElementNS(svgNS, "image");
-        
-        svg.setAttribute("width", "300");
-        svg.setAttribute("height", "300");
-        svg.setAttribute("viewBox", "0 0 300 300");
-        
-        image.setAttribute("width", "300");
-        image.setAttribute("height", "300");
-        image.setAttribute("href", canvas.toDataURL("image/png"));
-        
-        svg.appendChild(image);
-        
-        const svgData = new XMLSerializer().serializeToString(svg);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-        const link = document.createElement('a');
-        link.download = 'qrcode.svg';
-        link.href = URL.createObjectURL(svgBlob);
-        link.click();
-        URL.revokeObjectURL(link.href);
-    }
-}
+            const qrDiv = document.querySelector('#qrcode');
+            const canvas = qrDiv.querySelector('canvas');
+            
+            if (format === 'png' && canvas) {
+                const link = document.createElement('a');
+                link.download = 'qrcode.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } else if (format === 'svg') {
+                const svgNS = "http://www.w3.org/2000/svg";
+                const svg = document.createElementNS(svgNS, "svg");
+                const image = document.createElementNS(svgNS, "image");
+                
+                svg.setAttribute("width", "300");
+                svg.setAttribute("height", "300");
+                svg.setAttribute("viewBox", "0 0 300 300");
+                
+                image.setAttribute("width", "300");
+                image.setAttribute("height", "300");
+                image.setAttribute("href", canvas.toDataURL("image/png"));
+                
+                svg.appendChild(image);
+                
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const link = document.createElement('a');
+                link.download = 'qrcode.svg';
+                link.href = URL.createObjectURL(svgBlob);
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+        }
+
+        // Funções para importação Excel
+        document.getElementById('excelFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                // Validar e processar dados
+                importedData = jsonData.filter(row => row.title && row.direct).map(row => ({
+                    title: row.title.toString(),
+                    url: row.direct.toString()
+                }));
+
+                // Mostrar preview
+                showImportPreview();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function showImportPreview() {
+            const previewDiv = document.getElementById('importPreview');
+            const bulkDownloadBtn = document.getElementById('bulkDownload');
+
+            if (importedData.length > 0) {
+                previewDiv.innerHTML = importedData.map(item => `
+                    <div class="preview-item">
+                        <strong>${item.title}</strong>: ${item.url}
+                    </div>
+                `).join('');
+                bulkDownloadBtn.classList.add('active');
+            } else {
+                previewDiv.innerHTML = '<div class="preview-item">Nenhum dado válido encontrado</div>';
+                bulkDownloadBtn.classList.remove('active');
+            }
+        }
+
+        document.getElementById('bulkDownload').addEventListener('click', async function() {
+            if (importedData.length === 0) return;
+
+            const zip = new JSZip();
+            const promises = [];
+
+            // Criar QR code para cada item
+            for (const item of importedData) {
+                promises.push(new Promise((resolve) => {
+                    const tempDiv = document.createElement('div');
+                    new QRCode(tempDiv, {
+                        text: item.url,
+                        width: 300,
+                        height: 300,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H,
+                        margin: 2
+                    });
+
+                    // Esperar o QR code ser gerado
+                    setTimeout(() => {
+                        const canvas = tempDiv.querySelector('canvas');
+                        
+                        // Criar SVG
+                        const svgNS = "http://www.w3.org/2000/svg";
+                        const svg = document.createElementNS(svgNS, "svg");
+                        const image = document.createElementNS(svgNS, "image");
+                        
+                        svg.setAttribute("width", "300");
+                        svg.setAttribute("height", "300");
+                        svg.setAttribute("viewBox", "0 0 300 300");
+                        
+                        image.setAttribute("width", "300");
+                        image.setAttribute("height", "300");
+                        image.setAttribute("href", canvas.toDataURL("image/png"));
+                        
+                        svg.appendChild(image);
+                        
+                        // Converter SVG para string
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        
+                        // Adicionar ao ZIP com nome personalizado
+                        const fileName = `${item.title.replace(/[^a-z0-9]/gi, '_')}.svg`;
+                        zip.file(fileName, svgData);
+                        resolve();
+                    }, 100);
+                }));
+            }
+
+            // Aguardar todos os QR codes serem gerados
+            await Promise.all(promises);
+
+            // Gerar e baixar o arquivo ZIP
+            zip.generateAsync({type: "blob"}).then(function(content) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = "qrcodes.zip";
+                link.click();
+                URL.revokeObjectURL(link.href);
+            });
+        });
 
         // Carregar histórico inicial
         updateHistory();
-    </script>
-    <script>
+
+        // Script do Footer
         document.addEventListener('DOMContentLoaded', function() {
             const footerUrl = 'https://raw.githubusercontent.com/euoryan/euoryan.github.io/refs/heads/main/assets/pages/footer.html';
 
@@ -416,13 +605,11 @@
                         return response.text();
                     })
                     .then(html => {
-                        // Criar um parser para processar o HTML
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(html, 'text/html');
                         const newFooter = doc.querySelector('footer');
 
                         if (newFooter) {
-                            // Garantir que o Font Awesome está carregado
                             if (!document.querySelector('link[href*="font-awesome"]')) {
                                 const fontAwesome = document.createElement('link');
                                 fontAwesome.rel = 'stylesheet';
@@ -430,13 +617,11 @@
                                 document.head.appendChild(fontAwesome);
                             }
 
-                            // Remover footer existente se houver
                             const existingFooter = document.querySelector('footer');
                             if (existingFooter) {
                                 existingFooter.remove();
                             }
 
-                            // Adicionar o novo footer após a última seção
                             const lastSection = document.querySelector('section:last-of-type');
                             if (lastSection) {
                                 lastSection.after(newFooter);
@@ -444,7 +629,6 @@
                                 document.body.appendChild(newFooter);
                             }
 
-                            // Garantir que os estilos do footer sejam aplicados
                             newFooter.style.display = 'block';
                             newFooter.style.visibility = 'visible';
                         } else {
@@ -473,7 +657,6 @@
                     });
             }
 
-            // Adicionar um pequeno delay para garantir que todos os recursos estejam carregados
             setTimeout(loadFooter, 100);
         });
     </script>
