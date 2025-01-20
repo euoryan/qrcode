@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="assets/images/favicon/euoryan.png">
+    <link rel="icon" type="image/png" href="assets/images/favicon/euoryan.png">
+    <title>QR Code - Maker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .input-section {
+            background-color: #161b22;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #2ea043;
+        }
+
+        .qr-section {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            min-height: 400px;
+        }
+
+        .qr-section.active {
+            display: flex;
+        }
+
+        .download-buttons {
+            display: none;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+
+        .download-buttons.active {
+            display: flex;
+        }
+
+        .download-button {
+            background-color: #238636;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            transition: background-color 0.2s;
+            width: auto;
+        }
+
+        .download-button:hover {
+            background-color: #2ea043;
+        }
+
+        .history-section {
+            background-color: #161b22;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .history-item {
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background-color: #0d1117;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            transition: border-color 0.2s;
+        }
+
+        .history-item:hover {
+            border-color: #58a6ff;
+        }
+
+        .history-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .history-text {
+            flex-grow: 1;
+        }
+
+        .history-title {
+            color: #ffffff;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+
+        .history-url {
+            color: rgba(201, 209, 217, 0.6);
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 500px;
+        }
+
+        .copy-button {
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            color: #58a6ff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            margin: 0;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .copy-button:hover {
+            opacity: 1;
+            background: none;
+        }
+
+        .copy-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        h1, h2 {
+            color: #c9d1d9;
+            margin-bottom: 1rem;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: #161b22;
+            border-top: 1px solid #30363d;
+        }
+
+        .footer-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .footer-rights {
+            color: #c9d1d9;
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .input-section, .history-section {
+                padding: 1rem;
+            }
+
+            .qr-section {
+                padding: 1rem;
+                min-height: 300px;
+            }
+
+            .history-url {
+                max-width: 200px;
+            }
+
+            .download-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="input-section">
+            <h1>Gerador de QR Code</h1>
+            <input type="text" id="title" placeholder="Digite o título">
+            <input type="url" id="url" placeholder="Cole o link aqui">
+            <button onclick="generateQR()">Gerar QR Code</button>
+        </div>
+
+        <div class="qr-section" id="qrcode"></div>
+        <div class="download-buttons" id="downloadButtons">
+            <button class="download-button" onclick="downloadQR('png')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Baixar PNG
+            </button>
+            <button class="download-button" onclick="downloadQR('svg')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Baixar SVG
+            </button>
+        </div>
+
+        <div class="history-section">
+            <h2>Histórico</h2>
+            <div id="history"></div>
+        </div>
+    </div>
+
+    <script>
+        // Função para salvar no localStorage
+        function saveHistory(history) {
+            try {
+                localStorage.setItem('qrHistory', JSON.stringify(history));
+            } catch (e) {
+                console.error('Erro ao salvar histórico:', e);
+            }
+        }
+
+        // Função para carregar do localStorage
+        function loadHistory() {
+            try {
+                const saved = localStorage.getItem('qrHistory');
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                console.error('Erro ao carregar histórico:', e);
+                return [];
+            }
+        }
+
+        // Função para copiar texto para a área de transferência
+        async function copyToClipboard(text, button) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalIcon = button.innerHTML;
+                button.innerHTML = `<svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>`;
+                setTimeout(() => {
+                    button.innerHTML = originalIcon;
+                }, 2000);
+            } catch (err) {
+                console.error('Erro ao copiar:', err);
+                alert('Erro ao copiar o link');
+            }
+        }
+
+        let history = loadHistory();
+
+        function generateQR() {
+            const title = document.getElementById('title').value.trim();
+            const url = document.getElementById('url').value.trim();
+
+            if (!title || !url) {
+                alert('Por favor, preencha todos os campos');
+                return;
+            }
+
+            try {
+                new URL(url);
+            } catch {
+                alert('Por favor, insira um URL válido');
+                return;
+            }
+
+            const qrcodeDiv = document.getElementById('qrcode');
+            const downloadButtons = document.getElementById('downloadButtons');
+            qrcodeDiv.innerHTML = '';
+            qrcodeDiv.classList.add('active');
+            downloadButtons.classList.add('active');
+
+            new QRCode(qrcodeDiv, {
+                text: url,
+                width: 300,
+                height: 300,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H,
+                margin: 2
+            });
+
+            // Add to history
+            const newEntry = { 
+                title, 
+                url, 
+                timestamp: new Date().toISOString() 
+            };
+            
+            history.unshift(newEntry);
+            if (history.length > 10) {
+                history.pop();
+            }
+            
+            saveHistory(history);
+            updateHistory();
+        }
+
+        function updateHistory() {
+            const historyDiv = document.getElementById('history');
+            historyDiv.innerHTML = history.map((entry, index) => `
+                <div class="history-item">
+                    <div class="history-content">
+                        <div class="history-text">
+                            <div class="history-title">${entry.title}</div>
+                            <div class="history-url">${entry.url}</div>
+                        </div>
+                        <button class="copy-button" onclick="copyToClipboard('${entry.url}', this)" title="Copiar link">
+                            <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function downloadQR(format) {
+    const qrDiv = document.querySelector('#qrcode');
+    const canvas = qrDiv.querySelector('canvas');
+    
+    if (format === 'png' && canvas) {
+        const link = document.createElement('a');
+        link.download = 'qrcode.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } else if (format === 'svg') {
+        // Criar SVG manualmente a partir do canvas
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        const image = document.createElementNS(svgNS, "image");
+        
+        svg.setAttribute("width", "300");
+        svg.setAttribute("height", "300");
+        svg.setAttribute("viewBox", "0 0 300 300");
+        
+        image.setAttribute("width", "300");
+        image.setAttribute("height", "300");
+        image.setAttribute("href", canvas.toDataURL("image/png"));
+        
+        svg.appendChild(image);
+        
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        const link = document.createElement('a');
+        link.download = 'qrcode.svg';
+        link.href = URL.createObjectURL(svgBlob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+}
+
+        // Carregar histórico inicial
+        updateHistory();
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const footerUrl = 'https://raw.githubusercontent.com/euoryan/euoryan.github.io/refs/heads/main/assets/pages/footer.html';
+
+            function loadFooter() {
+                fetch(footerUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erro ao carregar o footer');
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        // Criar um parser para processar o HTML
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newFooter = doc.querySelector('footer');
+
+                        if (newFooter) {
+                            // Garantir que o Font Awesome está carregado
+                            if (!document.querySelector('link[href*="font-awesome"]')) {
+                                const fontAwesome = document.createElement('link');
+                                fontAwesome.rel = 'stylesheet';
+                                fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+                                document.head.appendChild(fontAwesome);
+                            }
+
+                            // Remover footer existente se houver
+                            const existingFooter = document.querySelector('footer');
+                            if (existingFooter) {
+                                existingFooter.remove();
+                            }
+
+                            // Adicionar o novo footer após a última seção
+                            const lastSection = document.querySelector('section:last-of-type');
+                            if (lastSection) {
+                                lastSection.after(newFooter);
+                            } else {
+                                document.body.appendChild(newFooter);
+                            }
+
+                            // Garantir que os estilos do footer sejam aplicados
+                            newFooter.style.display = 'block';
+                            newFooter.style.visibility = 'visible';
+                        } else {
+                            throw new Error('Nenhum footer encontrado');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar o footer:', error);
+                        
+                        const fallbackFooter = document.createElement('footer');
+                        fallbackFooter.className = 'footer';
+                        fallbackFooter.innerHTML = `
+                            <div class="footer-container">
+                                <div class="footer-rights">
+                                    <span>© 2024 por Ryan</span>
+                                </div>
+                            </div>
+                        `;
+                        
+                        const lastSection = document.querySelector('section:last-of-type');
+                        if (lastSection) {
+                            lastSection.after(fallbackFooter);
+                        } else {
+                            document.body.appendChild(fallbackFooter);
+                        }
+                    });
+            }
+
+            // Adicionar um pequeno delay para garantir que todos os recursos estejam carregados
+            setTimeout(loadFooter, 100);
+        });
+    </script>
+</body>
+</html>
