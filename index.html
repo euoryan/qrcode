@@ -499,9 +499,16 @@
         function generateQR() {
             const title = document.getElementById('title').value.trim();
             const url = document.getElementById('url').value.trim();
+            const addTitleToQR = document.getElementById('addTitleToQR').checked;
+            const titleColor = document.getElementById('titleColor').value;
 
             if (!title || !url) {
                 alert('Por favor, preencha todos os campos');
+                return;
+            }
+
+            if (title.length > 5) {
+                alert('O título deve ter no máximo 5 caracteres');
                 return;
             }
 
@@ -518,7 +525,22 @@
             qrcodeDiv.classList.add('active');
             downloadButtons.classList.add('active');
 
-            new QRCode(qrcodeDiv, {
+            // Criar container com classe específica
+            const container = document.createElement('div');
+            container.className = 'qr-container';
+            qrcodeDiv.appendChild(container);
+
+            // Adicionar título primeiro se a opção estiver ativada
+            if (addTitleToQR) {
+                const titleElement = document.createElement('div');
+                titleElement.className = 'qr-title';
+                titleElement.style.color = titleColor;
+                titleElement.textContent = title.toUpperCase();
+                container.appendChild(titleElement);
+            }
+
+            // Gerar QR code
+            new QRCode(container, {
                 text: url,
                 width: 300,
                 height: 300,
@@ -528,10 +550,13 @@
                 margin: 2
             });
 
+            // Adicionar ao histórico
             const newEntry = {
                 title,
                 url,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                hasTitle: addTitleToQR,
+                titleColor: titleColor
             };
 
             history.unshift(newEntry);
@@ -666,84 +691,84 @@
 
         // Atualizar a função de download em massa
         document.getElementById('bulkDownload').addEventListener('click', async function () {
-    if (importedData.length === 0) return;
+            if (importedData.length === 0) return;
 
-    const button = this;
-    const originalText = button.textContent;
-    button.textContent = 'Gerando QR Codes...';
-    button.disabled = true;
+            const button = this;
+            const originalText = button.textContent;
+            button.textContent = 'Gerando QR Codes...';
+            button.disabled = true;
 
-    try {
-        const zip = new JSZip();
-        const promises = [];
+            try {
+                const zip = new JSZip();
+                const promises = [];
 
-        for (let i = 0; i < importedData.length; i++) {
-            const item = importedData[i];
-            button.textContent = `Processando QR Code ${i + 1}/${importedData.length}...`;
+                for (let i = 0; i < importedData.length; i++) {
+                    const item = importedData[i];
+                    button.textContent = `Processando QR Code ${i + 1}/${importedData.length}...`;
 
-            promises.push(new Promise((resolve) => {
-            const tempDiv = document.createElement('div');
-            tempDiv.className = 'qr-container';
-            tempDiv.style.position = 'fixed';
-            tempDiv.style.left = '-9999px';
-            document.body.appendChild(tempDiv);
+                    promises.push(new Promise((resolve) => {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.className = 'qr-container';
+                        tempDiv.style.position = 'fixed';
+                        tempDiv.style.left = '-9999px';
+                        document.body.appendChild(tempDiv);
 
-            // Adicionar título se especificado
-            if (item.addTitle) {
-                const titleElement = document.createElement('div');
-                titleElement.className = 'qr-title';
-                titleElement.style.color = '#003366'; // Alterado aqui de #000000 para #003366
-                titleElement.textContent = item.title.toUpperCase();
-                tempDiv.appendChild(titleElement);
+                        // Adicionar título se especificado
+                        if (item.addTitle) {
+                            const titleElement = document.createElement('div');
+                            titleElement.className = 'qr-title';
+                            titleElement.style.color = '#003366'; // Alterado aqui de #000000 para #003366
+                            titleElement.textContent = item.title.toUpperCase();
+                            tempDiv.appendChild(titleElement);
+                        }
+
+                        // Gerar QR Code
+                        new QRCode(tempDiv, {
+                            text: item.url,
+                            width: 300,
+                            height: 300,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.H,
+                            margin: 2
+                        });
+
+                        // Esperar o QR code ser renderizado
+                        setTimeout(() => {
+                            html2canvas(tempDiv, {
+                                backgroundColor: '#ffffff'
+                            }).then(canvas => {
+                                canvas.toBlob(blob => {
+                                    const fileName = `${item.title.replace(/[^a-z0-9]/gi, '_')}.png`;
+                                    zip.file(fileName, blob);
+                                    document.body.removeChild(tempDiv);
+                                    resolve();
+                                }, 'image/png');
+                            });
+                        }, 200);
+                    }));
+                }
+
+                button.textContent = 'Compactando arquivos...';
+                await Promise.all(promises);
+
+                button.textContent = 'Preparando download...';
+                const content = await zip.generateAsync({ type: "blob" });
+
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = "qrcodes.zip";
+                link.click();
+                URL.revokeObjectURL(link.href);
+
+            } catch (error) {
+                console.error('Erro ao gerar QR codes:', error);
+                alert('Ocorreu um erro ao gerar os QR codes. Por favor, tente novamente.');
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
             }
-
-                // Gerar QR Code
-                new QRCode(tempDiv, {
-                    text: item.url,
-                    width: 300,
-                    height: 300,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H,
-                    margin: 2
-                });
-
-                // Esperar o QR code ser renderizado
-                setTimeout(() => {
-                    html2canvas(tempDiv, {
-                        backgroundColor: '#ffffff'
-                    }).then(canvas => {
-                        canvas.toBlob(blob => {
-                            const fileName = `${item.title.replace(/[^a-z0-9]/gi, '_')}.png`;
-                            zip.file(fileName, blob);
-                            document.body.removeChild(tempDiv);
-                            resolve();
-                        }, 'image/png');
-                    });
-                }, 200);
-            }));
-        }
-
-        button.textContent = 'Compactando arquivos...';
-        await Promise.all(promises);
-
-        button.textContent = 'Preparando download...';
-        const content = await zip.generateAsync({ type: "blob" });
-        
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(content);
-        link.download = "qrcodes.zip";
-        link.click();
-        URL.revokeObjectURL(link.href);
-
-    } catch (error) {
-        console.error('Erro ao gerar QR codes:', error);
-        alert('Ocorreu um erro ao gerar os QR codes. Por favor, tente novamente.');
-    } finally {
-        button.textContent = originalText;
-        button.disabled = false;
-    }
-});
+        });
 
         // Carregar histórico inicial
         updateHistory();
