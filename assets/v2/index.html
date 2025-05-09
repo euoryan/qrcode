@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/inter/3.19.3/inter.css" rel="stylesheet">
+    <title>euoryan // qrcode v2</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .input-section {
+            background-color: #161b22;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        input,
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #2ea043;
+        }
+
+        .qr-section {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            min-height: 400px;
+        }
+
+        .qr-section.active {
+            display: flex;
+        }
+
+        .download-buttons {
+            display: none;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+
+        .download-buttons.active {
+            display: flex;
+        }
+
+        .download-button {
+            background-color: #238636;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            transition: background-color 0.2s;
+            width: auto;
+        }
+
+        .download-button:hover {
+            background-color: #2ea043;
+        }
+
+        .history-section {
+            background-color: #161b22;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .history-item {
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background-color: #0d1117;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            transition: border-color 0.2s;
+        }
+
+        .history-item:hover {
+            border-color: #58a6ff;
+        }
+
+        .history-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .history-text {
+            flex-grow: 1;
+        }
+
+        .history-title {
+            color: #ffffff;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+
+        .history-url {
+            color: rgba(201, 209, 217, 0.6);
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 500px;
+        }
+
+        .copy-button {
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            color: #58a6ff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            margin: 0;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .copy-button:hover {
+            opacity: 1;
+            background: none;
+        }
+
+        .copy-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .import-section {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #161b22;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .file-input-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 0.75rem;
+            background-color: #0d1117;
+            border: 1px dashed #30363d;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .file-input-label:hover {
+            border-color: #58a6ff;
+        }
+
+        .bulk-download-button {
+            background-color: #238636;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .bulk-download-button.active {
+            display: block;
+        }
+
+        .bulk-download-button:hover {
+            background-color: #2ea043;
+        }
+
+        #importPreview {
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .preview-item {
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background-color: #0d1117;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        h1,
+        h2 {
+            color: #c9d1d9;
+            margin-bottom: 1rem;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: #161b22;
+            border-top: 1px solid #30363d;
+        }
+
+        .footer-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .footer-rights {
+            color: #c9d1d9;
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .input-section,
+            .history-section {
+                padding: 1rem;
+            }
+
+            .qr-section {
+                padding: 1rem;
+                min-height: 300px;
+            }
+
+            .history-url {
+                max-width: 200px;
+            }
+
+            .download-buttons {
+                flex-direction: column;
+            }
+        }
+
+        .options-group {
+            margin: 0.5rem 0;
+            padding: 1rem;
+            background-color: #0d1117;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
+        }
+
+        .option-item input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .title-options {
+            margin-top: 0.5rem;
+            padding-left: 1.5rem;
+        }
+
+        .title-options input[type="color"] {
+            width: auto;
+            padding: 0;
+            height: 30px;
+        }
+
+        .char-counter {
+            font-size: 0.8rem;
+            color: #8b949e;
+            margin-top: 0.25rem;
+        }
+
+        .char-counter.error {
+            color: #f85149;
+        }
+
+        @font-face {
+            font-family: 'Inter';
+            src: url('https://cdnjs.cloudflare.com/ajax/libs/inter/3.19.3/UltraLight/Inter-UltraLight.woff2') format('woff2');
+            font-weight: 200;
+        }
+
+        .qr-title {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 10px;
+            color: #000;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            font-size: 20px;
+            text-align: center;
+            z-index: 2;
+            letter-spacing: 1px;
+            width: 90px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none;
+            border: 2px solid #000;
+        }
+
+        /* Atualizar estilos do container do QR code */
+        .qr-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+        }
+
+        /* Garantir que o QR code tenha uma área clara no centro */
+        .qr-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="input-section">
+            <h1>Gerador de QR Code</h1>
+            <input type="text" id="title" placeholder="Digite o título">
+            <input type="url" id="url" placeholder="Cole o link aqui">
+        </div>
+
+        <div class="options-group">
+            <div class="option-item">
+                <input type="checkbox" id="addTitleToQR">
+                <label for="addTitleToQR">Adicionar título no QR Code</label>
+            </div>
+            <div class="title-options" id="titleOptions" style="display: none;">
+                <label>
+                    Cor do texto:
+                    <input type="color" id="titleColor" value="#003366">
+                </label>
+            </div>
+        </div>
+
+        <button onclick="generateQR()">Gerar QR Code</button>
+    </div>
+
+    <div class="import-section">
+        <h2>Importar Excel</h2>
+        <div class="file-input-container">
+            <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls">
+            <label for="excelFile" class="file-input-label">
+                Selecione ou arraste um arquivo Excel
+            </label>
+        </div>
+        <div id="importPreview"></div>
+        <button id="bulkDownload" class="bulk-download-button">
+            Baixar todos os QR Codes (ZIP)
+        </button>
+    </div>
+
+    <div class="qr-section" id="qrcode"></div>
+    <div class="download-buttons" id="downloadButtons">
+        <button class="download-button" onclick="downloadQR('png')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Baixar PNG
+        </button>
+        <button class="download-button" onclick="downloadQR('svg')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Baixar SVG
+        </button>
+    </div>
+
+    <div class="history-section">
+        <h2>Histórico</h2>
+        <div id="history"></div>
+    </div>
+    </div>
+
+    <script>
+        // Variáveis globais
+        let history = loadHistory();
+        let importedData = [];
+
+        // Funções do histórico
+        function saveHistory(history) {
+            try {
+                localStorage.setItem('qrHistory', JSON.stringify(history));
+            } catch (e) {
+                console.error('Erro ao salvar histórico:', e);
+            }
+        }
+
+        function loadHistory() {
+            try {
+                const saved = localStorage.getItem('qrHistory');
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                console.error('Erro ao carregar histórico:', e);
+                return [];
+            }
+        }
+
+        async function copyToClipboard(text, button) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalIcon = button.innerHTML;
+                button.innerHTML = `<svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>`;
+                setTimeout(() => {
+                    button.innerHTML = originalIcon;
+                }, 2000);
+            } catch (err) {
+                console.error('Erro ao copiar:', err);
+                alert('Erro ao copiar o link');
+            }
+        }
+
+        function generateQR() {
+            const title = document.getElementById('title').value.trim();
+            const url = document.getElementById('url').value.trim();
+            const addTitleToQR = document.getElementById('addTitleToQR').checked;
+            const titleColor = document.getElementById('titleColor').value;
+
+            if (!title || !url) {
+                alert('Por favor, preencha todos os campos');
+                return;
+            }
+
+            if (title.length > 5) {
+                alert('O título deve ter no máximo 5 caracteres');
+                return;
+            }
+
+            try {
+                new URL(url);
+            } catch {
+                alert('Por favor, insira um URL válido');
+                return;
+            }
+
+            const qrcodeDiv = document.getElementById('qrcode');
+            const downloadButtons = document.getElementById('downloadButtons');
+            qrcodeDiv.innerHTML = '';
+            qrcodeDiv.classList.add('active');
+            downloadButtons.classList.add('active');
+
+            // Criar container com classe específica
+            const container = document.createElement('div');
+            container.className = 'qr-container';
+            qrcodeDiv.appendChild(container);
+
+            // Adicionar título primeiro se a opção estiver ativada
+            if (addTitleToQR) {
+                const titleElement = document.createElement('div');
+                titleElement.className = 'qr-title';
+                titleElement.style.color = titleColor;
+                titleElement.textContent = title.toUpperCase();
+                container.appendChild(titleElement);
+            }
+
+            // Gerar QR code
+            new QRCode(container, {
+                text: url,
+                width: 300,
+                height: 300,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H,
+                margin: 2
+            });
+
+            // Adicionar ao histórico
+            const newEntry = {
+                title,
+                url,
+                timestamp: new Date().toISOString(),
+                hasTitle: addTitleToQR,
+                titleColor: titleColor
+            };
+
+            history.unshift(newEntry);
+            if (history.length > 10) {
+                history.pop();
+            }
+
+            saveHistory(history);
+            updateHistory();
+        }
+
+        function updateHistory() {
+            const historyDiv = document.getElementById('history');
+            historyDiv.innerHTML = history.map((entry, index) => `
+                <div class="history-item">
+                    <div class="history-content">
+                        <div class="history-text">
+                            <div class="history-title">${entry.title}</div>
+                            <div class="history-url">${entry.url}</div>
+                        </div>
+                        <button class="copy-button" onclick="copyToClipboard('${entry.url}', this)" title="Copiar link">
+                            <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function downloadQR(format) {
+            const qrDiv = document.querySelector('#qrcode');
+            const canvas = qrDiv.querySelector('canvas');
+
+            if (format === 'png' && canvas) {
+                const link = document.createElement('a');
+                link.download = 'qrcode.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } else if (format === 'svg') {
+                const svgNS = "http://www.w3.org/2000/svg";
+                const svg = document.createElementNS(svgNS, "svg");
+                const image = document.createElementNS(svgNS, "image");
+
+                svg.setAttribute("width", "300");
+                svg.setAttribute("height", "300");
+                svg.setAttribute("viewBox", "0 0 300 300");
+
+                image.setAttribute("width", "300");
+                image.setAttribute("height", "300");
+                image.setAttribute("href", canvas.toDataURL("image/png"));
+
+                svg.appendChild(image);
+
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const link = document.createElement('a');
+                link.download = 'qrcode.svg';
+                link.href = URL.createObjectURL(svgBlob);
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+        }
+
+        // Funções para importação Excel
+        document.getElementById('excelFile').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                // Validar e processar dados
+                importedData = jsonData.filter(row => {
+                    // Verificar se tem as colunas necessárias
+                    if (!row.title || !row.url) return false;
+
+                    // Validar título (máximo 5 caracteres)
+                    const title = row.title.toString().trim();
+                    if (title.length > 5) return false;
+
+                    // Validar URL
+                    try {
+                        new URL(row.url.toString());
+                    } catch {
+                        return false;
+                    }
+
+                    return true;
+                }).map(row => ({
+                    title: row.title.toString().trim(),
+                    url: row.url.toString(),
+                    addTitle: row.addTitle === true || row.addTitle === 'true' || row.addTitle === 1
+                }));
+
+                // Mostrar preview
+                showImportPreview();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function showImportPreview() {
+            const previewDiv = document.getElementById('importPreview');
+            const bulkDownloadBtn = document.getElementById('bulkDownload');
+
+            if (importedData.length > 0) {
+                previewDiv.innerHTML = importedData.map(item => `
+            <div class="preview-item">
+                <strong>${item.title}</strong>: ${item.url}
+                <span class="preview-badge">${item.addTitle ? '(Com título)' : '(Sem título)'}</span>
+            </div>
+        `).join('');
+                bulkDownloadBtn.classList.add('active');
+            } else {
+                previewDiv.innerHTML = `
+            <div class="preview-item error">
+                Nenhum dado válido encontrado. Verifique se:
+                <ul>
+                    <li>O arquivo tem as colunas: title, url, addTitle</li>
+                    <li>Os títulos têm no máximo 5 caracteres</li>
+                    <li>As URLs são válidas</li>
+                </ul>
+            </div>`;
+                bulkDownloadBtn.classList.remove('active');
+            }
+        }
+
+        // Atualizar a função de download em massa
+        document.getElementById('bulkDownload').addEventListener('click', async function () {
+            if (importedData.length === 0) return;
+
+            const button = this;
+            const originalText = button.textContent;
+            button.textContent = 'Gerando QR Codes...';
+            button.disabled = true;
+
+            try {
+                const zip = new JSZip();
+                const promises = [];
+
+                for (let i = 0; i < importedData.length; i++) {
+                    const item = importedData[i];
+                    button.textContent = `Processando QR Code ${i + 1}/${importedData.length}...`;
+
+                    promises.push(new Promise((resolve) => {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.className = 'qr-container';
+                        tempDiv.style.position = 'fixed';
+                        tempDiv.style.left = '-9999px';
+                        document.body.appendChild(tempDiv);
+
+                        // Adicionar título se especificado
+                        if (item.addTitle) {
+                            const titleElement = document.createElement('div');
+                            titleElement.className = 'qr-title';
+                            titleElement.style.color = '#003366'; // Alterado aqui de #000000 para #003366
+                            titleElement.textContent = item.title.toUpperCase();
+                            tempDiv.appendChild(titleElement);
+                        }
+
+                        // Gerar QR Code
+                        new QRCode(tempDiv, {
+                            text: item.url,
+                            width: 300,
+                            height: 300,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.H,
+                            margin: 2
+                        });
+
+                        // Esperar o QR code ser renderizado
+                        setTimeout(() => {
+                            html2canvas(tempDiv, {
+                                backgroundColor: '#ffffff'
+                            }).then(canvas => {
+                                canvas.toBlob(blob => {
+                                    const fileName = `${item.title.replace(/[^a-z0-9]/gi, '_')}.png`;
+                                    zip.file(fileName, blob);
+                                    document.body.removeChild(tempDiv);
+                                    resolve();
+                                }, 'image/png');
+                            });
+                        }, 200);
+                    }));
+                }
+
+                button.textContent = 'Compactando arquivos...';
+                await Promise.all(promises);
+
+                button.textContent = 'Preparando download...';
+                const content = await zip.generateAsync({ type: "blob" });
+
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = "qrcodes.zip";
+                link.click();
+                URL.revokeObjectURL(link.href);
+
+            } catch (error) {
+                console.error('Erro ao gerar QR codes:', error);
+                alert('Ocorreu um erro ao gerar os QR codes. Por favor, tente novamente.');
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        });
+
+        // Carregar histórico inicial
+        updateHistory();
+
+        // Script do Footer
+        document.addEventListener('DOMContentLoaded', function () {
+            const footerUrl = 'https://raw.githubusercontent.com/euoryan/euoryan.github.io/refs/heads/main/assets/pages/footer.html';
+
+            function loadFooter() {
+                fetch(footerUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erro ao carregar o footer');
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newFooter = doc.querySelector('footer');
+
+                        if (newFooter) {
+                            if (!document.querySelector('link[href*="font-awesome"]')) {
+                                const fontAwesome = document.createElement('link');
+                                fontAwesome.rel = 'stylesheet';
+                                fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+                                document.head.appendChild(fontAwesome);
+                            }
+
+                            const existingFooter = document.querySelector('footer');
+                            if (existingFooter) {
+                                existingFooter.remove();
+                            }
+
+                            const lastSection = document.querySelector('section:last-of-type');
+                            if (lastSection) {
+                                lastSection.after(newFooter);
+                            } else {
+                                document.body.appendChild(newFooter);
+                            }
+
+                            newFooter.style.display = 'block';
+                            newFooter.style.visibility = 'visible';
+                        } else {
+                            throw new Error('Nenhum footer encontrado');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar o footer:', error);
+
+                        const fallbackFooter = document.createElement('footer');
+                        fallbackFooter.className = 'footer';
+                        fallbackFooter.innerHTML = `
+                            <div class="footer-container">
+                                <div class="footer-rights">
+                                    <span>© 2024 por Ryan</span>
+                                </div>
+                            </div>
+                        `;
+
+                        const lastSection = document.querySelector('section:last-of-type');
+                        if (lastSection) {
+                            lastSection.after(fallbackFooter);
+                        } else {
+                            document.body.appendChild(fallbackFooter);
+                        }
+                    });
+            }
+
+            setTimeout(loadFooter, 100);
+        });
+
+        document.getElementById('title').addEventListener('input', function (e) {
+            const count = e.target.value.length;
+            const counter = document.getElementById('charCounter');
+            counter.textContent = `${count}/5 caracteres`;
+            counter.className = count > 5 ? 'char-counter error' : 'char-counter';
+        });
+
+        // Adicione este novo evento para mostrar/esconder opções do título
+        document.getElementById('addTitleToQR').addEventListener('change', function () {
+            document.getElementById('titleOptions').style.display = this.checked ? 'block' : 'none';
+        });
+
+        // Modifique a função generateQR
+        function generateQR() {
+            const title = document.getElementById('title').value.trim();
+            const url = document.getElementById('url').value.trim();
+            const addTitleToQR = document.getElementById('addTitleToQR').checked;
+            const titleColor = document.getElementById('titleColor').value;
+
+            if (!title || !url) {
+                alert('Por favor, preencha todos os campos');
+                return;
+            }
+
+            if (title.length > 5) {
+                alert('O título deve ter no máximo 5 caracteres');
+                return;
+            }
+
+            try {
+                new URL(url);
+            } catch {
+                alert('Por favor, insira um URL válido');
+                return;
+            }
+
+            const qrcodeDiv = document.getElementById('qrcode');
+            const downloadButtons = document.getElementById('downloadButtons');
+            qrcodeDiv.innerHTML = '';
+            qrcodeDiv.classList.add('active');
+            downloadButtons.classList.add('active');
+
+            // Criar container com classe específica
+            const container = document.createElement('div');
+            container.className = 'qr-container';
+            qrcodeDiv.appendChild(container);
+
+            // Adicionar título primeiro se a opção estiver ativada
+            if (addTitleToQR) {
+                const titleElement = document.createElement('div');
+                titleElement.className = 'qr-title';
+                titleElement.style.color = titleColor;
+                titleElement.textContent = title.toUpperCase(); // Converter para maiúsculas
+                container.appendChild(titleElement);
+            }
+
+            // Gerar QR code com área clara no centro
+            new QRCode(container, {
+                text: url,
+                width: 300,
+                height: 300,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H,
+                margin: 2
+            });
+
+            // ... (resto da função permanece igual)
+        }
+
+        // Atualizar função downloadQR para SVG
+        function downloadQR(format) {
+            const qrDiv = document.querySelector('#qrcode');
+            const container = qrDiv.firstChild;
+
+            if (format === 'png') {
+                html2canvas(container).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = 'qrcode.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+            } else if (format === 'svg') {
+                const svgNS = "http://www.w3.org/2000/svg";
+                const svg = document.createElementNS(svgNS, "svg");
+                svg.setAttribute("width", "300");
+                svg.setAttribute("height", "300");
+                svg.setAttribute("viewBox", "0 0 300 300");
+
+                // Adicionar QR code como imagem
+                const qrImage = document.createElementNS(svgNS, "image");
+                qrImage.setAttribute("width", "300");
+                qrImage.setAttribute("height", "300");
+                qrImage.setAttribute("href", container.querySelector('canvas').toDataURL("image/png"));
+                svg.appendChild(qrImage);
+
+                // Se houver título, adicionar como texto SVG
+                const titleElement = container.querySelector('.qr-title');
+                if (titleElement) {
+                    // Adicionar retângulo de fundo
+                    const background = document.createElementNS(svgNS, "rect");
+                    background.setAttribute("x", "105");
+                    background.setAttribute("y", "130");
+                    background.setAttribute("width", "90");
+                    background.setAttribute("height", "40");
+                    background.setAttribute("fill", "white");
+                    background.setAttribute("stroke", "black");
+                    background.setAttribute("stroke-width", "2");
+
+                    // Adicionar texto
+                    const text = document.createElementNS(svgNS, "text");
+                    text.setAttribute("x", "150");
+                    text.setAttribute("y", "150");
+                    text.setAttribute("text-anchor", "middle");
+                    text.setAttribute("dominant-baseline", "middle");
+                    text.setAttribute("fill", titleElement.style.color);
+                    text.setAttribute("font-family", "Inter, sans-serif");
+                    text.setAttribute("font-size", "20");
+                    text.setAttribute("letter-spacing", "1");
+                    text.textContent = titleElement.textContent;
+
+                    svg.appendChild(background);
+                    svg.appendChild(text);
+                }
+
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const link = document.createElement('a');
+                link.download = 'qrcode.svg';
+                link.href = URL.createObjectURL(svgBlob);
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+        }
+    </script>
+</body>
+
+</html>
