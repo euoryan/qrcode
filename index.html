@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>euoryan // qrcode gen</title>
+  <meta name="description" content="Gerador profissional de QR Codes - Seguro, rápido e moderno">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235a6d3a' stroke='%234a5a2a' stroke-width='1'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/css/style.css">
+  <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@gh-pages/qrcode.min.js"></script>
+</head>
+<body data-theme="dark">
+  <nav class="navbar">
+    <div class="navbar-content">
+      <div class="navbar-brand">
+        <span class="navbar-title">QR Code</span>
+        <span class="navbar-tag">developed by <a href="https://euoryan.com" class="navbar-tag-link">euoryan.com</a></span>
+      </div>
+      <div class="navbar-actions">
+        <div class="theme-toggle-wrapper">
+          <span class="theme-toggle-label" id="themeToggleLabel">Dark mode</span>
+          <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema">
+            <span class="theme-toggle-slider"></span>
+          </button>
+        </div>
+        <button class="privacy-toggle" id="privacyToggle" aria-label="Alternar privacidade" title="Ocultar/Mostrar QR Codes">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" id="privacyIcon" viewBox="0 0 16 16">
+            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
+            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="app-container">
+    <section class="generator-section">
+      <header class="generator-header">
+        <h1 class="generator-title">Gerador QR Code</h1>
+        <p class="generator-subtitle">Digite ou cole o link/URL para gerar o QR Code</p>
+      </header>
+
+      <div class="input-section">
+        <div class="options-accordion">
+          <button class="options-accordion-header" type="button">
+            <span class="options-accordion-title">Opções</span>
+            <span class="options-accordion-icon">+</span>
+          </button>
+          <div class="options-accordion-content">
+            <div class="option-item">
+              <label for="logoUpload" class="option-label">
+                <span class="option-label-text">Logo central (PNG)</span>
+                <input type="file" id="logoUpload" accept="image/png" class="option-file-input">
+                <span class="option-file-label" id="logoFileLabel">Nenhum arquivo selecionado</span>
+              </label>
+              <button type="button" class="option-remove-logo" id="removeLogoBtn" style="display: none;">Remover logo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="nameInputField" class="input-label">Nome</label>
+          <div class="input-wrapper">
+            <input 
+              type="text" 
+              id="nameInputField" 
+              class="name-input"
+              placeholder="QR Code"
+              maxlength="30"
+            >
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="urlInput" class="input-label">URL / Link</label>
+          <div class="input-wrapper">
+            <input 
+              type="url" 
+              id="urlInput" 
+              class="url-input"
+              placeholder="https://exemplo.com"
+              autocomplete="off"
+              spellcheck="false"
+            >
+          </div>
+        </div>
+        
+        <button class="generate-button" id="generateButton" type="button">
+          <div class="spinner"></div>
+          <span class="button-text">Gerar QR Code</span>
+        </button>
+      </div>
+
+      <section class="result-section" id="resultSection">
+        <div class="result-card">
+          <div class="result-label">QR Code</div>
+          <div class="result-qrcode-container">
+            <canvas id="qrcodeCanvas" class="qrcode-clickable"></canvas>
+          </div>
+        </div>
+        
+        <div class="download-options">
+          <button class="download-button" id="downloadButton" type="button">
+            <span id="downloadText">Baixar QR Code</span>
+          </button>
+          <div class="download-format-selector">
+            <label for="downloadFormat" class="format-label">Formato:</label>
+            <select id="downloadFormat" class="format-select">
+              <option value="png">PNG</option>
+              <option value="svg">SVG</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="info-section">
+      <div class="info-accordion">
+        <button class="info-accordion-header" type="button">
+          <span class="info-accordion-title">Instruções</span>
+          <span class="info-accordion-icon">+</span>
+        </button>
+        <div class="info-accordion-content">
+          <ul class="info-list">
+            <li>Digite ou cole a URL/link no campo acima</li>
+            <li>Opcionalmente, adicione um logo PNG no centro do QR Code</li>
+            <li>Clique em "Gerar QR Code" para criar o código</li>
+            <li>Baixe o QR Code gerado em formato PNG</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="info-accordion">
+        <button class="info-accordion-header" type="button">
+          <span class="info-accordion-title">O que é QR Code?</span>
+          <span class="info-accordion-icon">+</span>
+        </button>
+        <div class="info-accordion-content">
+          <div class="info-content">
+            <p>QR Code (Quick Response Code) é um código de barras bidimensional que pode ser escaneado por dispositivos móveis para acessar informações rapidamente. Os QR Codes são amplamente utilizados para compartilhar URLs, informações de contato, textos e muito mais.</p>
+            <p>Este gerador permite criar QR Codes personalizados com logo central, facilitando a identificação e personalização do código. Os QR Codes gerados podem ser salvos como imagens PNG e utilizados em materiais impressos ou digitais.</p>
+          </div>
+        </div>
+      </div>
+      </section>
+    </section>
+
+    <section class="history-section">
+      <div class="history-header">
+        <h2 class="history-title">Histórico</h2>
+        <button class="clear-button" id="clearButton" type="button">Limpar Tudo</button>
+      </div>
+      
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Nenhum QR Code gerado ainda</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-container">
+      <a href="https://euoryan.com/politica/">Política de Privacidade</a>
+      <a href="https://euoryan.com/termos/">Termos de Uso</a>
+      <a href="https://euoryan.com/contato/">Contato</a>
+      <span>developed by <a href="https://euoryan.com">euoryan</a></span>
+    </div>
+  </footer>
+
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Editar Nome</h3>
+        <button class="modal-close" id="modalClose" type="button" aria-label="Fechar modal">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <input 
+          type="text" 
+          id="nameInput" 
+          class="modal-input"
+          placeholder="Digite um nome para identificar..."
+          maxlength="30"
+        >
+      </div>
+      
+      <div class="modal-footer">
+        <button class="modal-button secondary" id="modalCancel" type="button">Cancelar</button>
+        <button class="modal-button primary" id="modalSave" type="button">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="qrcode-viewer-overlay hidden" id="qrcodeViewerOverlay">
+    <div class="qrcode-viewer-content">
+      <button class="qrcode-viewer-close" id="qrcodeViewerClose" type="button" aria-label="Fechar visualização">×</button>
+      <img id="qrcodeViewerImage" src="" alt="QR Code ampliado">
+    </div>
+  </div>
+
+  <script src="./assets/js/script.js"></script>
+</body>
+</html>
+
