@@ -329,7 +329,20 @@ function updateThemeDropdown(preference) {
 
 function toggleThemeDropdown() {
   const dropdown = document.getElementById('themeDropdown');
-  if (dropdown) {
+  const toggleButton = document.getElementById('themeToggle');
+  
+  if (dropdown && toggleButton) {
+    const isActive = dropdown.classList.contains('active');
+    
+    if (!isActive) {
+      // Calcular posição no mobile
+      if (window.innerWidth <= 640) {
+        const rect = toggleButton.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + 8) + 'px';
+        dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+      }
+    }
+    
     dropdown.classList.toggle('active');
   }
 }
