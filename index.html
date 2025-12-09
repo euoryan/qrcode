@@ -10,9 +10,470 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/css/style.css">
+  <script>
+    (function() {
+      const THEME_STORAGE_KEY = 'theme_preference';
+      function getSystemTheme() {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          return 'dark';
+        }
+        return 'light';
+      }
+      function getStoredTheme() {
+        try {
+          return localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+        } catch (e) {
+          return 'system';
+        }
+      }
+      function getEffectiveTheme() {
+        const preference = getStoredTheme();
+        if (preference === 'system') {
+          return getSystemTheme();
+        }
+        return preference;
+      }
+      const theme = getEffectiveTheme();
+      document.documentElement.setAttribute('data-theme', theme);
+      if (document.body) {
+        document.body.setAttribute('data-theme', theme);
+      }
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@gh-pages/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    /* Tabs System */
+    .tabs-container {
+      display: flex;
+      gap: var(--spacing-xs);
+      margin-bottom: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-primary);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .tabs-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-button {
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: color var(--transition-fast), border-color var(--transition-fast);
+      white-space: nowrap;
+      font-family: var(--font-family);
+      flex-shrink: 0;
+    }
+
+    .tab-button:hover {
+      color: var(--text-primary);
+    }
+
+    .tab-button.active {
+      color: var(--text-primary);
+      border-bottom-color: var(--accent-primary);
+    }
+
+    /* Mobile Dropdown */
+    .tabs-dropdown {
+      display: none;
+      width: 100%;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .tabs-dropdown select {
+      width: 100%;
+      padding: var(--spacing-md);
+      background: var(--bg-input);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: var(--font-size-sm);
+      font-family: var(--font-family);
+      cursor: pointer;
+      transition: border-color var(--transition-fast);
+      outline: none;
+    }
+
+    .tabs-dropdown select:focus {
+      border-color: var(--border-focus);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Title in QR Code */
+    .title-in-qr-container {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      margin: 0 auto;
+      background: white;
+    }
+
+    .title-in-qr-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 10px;
+      color: #000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      font-size: 20px;
+      text-align: center;
+      z-index: 2;
+      letter-spacing: 1px;
+      width: 90px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #000;
+    }
+
+    .title-in-qr-container canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* WiFi Form */
+    .wifi-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-md);
+    }
+
+    @media (max-width: 640px) {
+      .wifi-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Import Section */
+    .import-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      padding: var(--spacing-lg);
+      margin-top: var(--spacing-lg);
+    }
+
+    .template-download-section {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .template-download-button {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: var(--font-size-xs);
+      cursor: pointer;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .template-download-button:hover {
+      background: var(--bg-tertiary);
+      border-color: var(--border-secondary);
+      color: var(--text-primary);
+    }
+
+    .excel-instructions {
+      margin-top: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .excel-column-info {
+      display: grid;
+      gap: var(--spacing-xs);
+      margin-top: 0;
+    }
+
+    .excel-column-item {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+    }
+
+    .excel-column-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: var(--font-size-xs);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .excel-column-desc {
+      font-size: var(--font-size-xs);
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .excel-example-table {
+      margin-top: var(--spacing-sm);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--bg-secondary);
+    }
+
+    .excel-example-header {
+      display: grid;
+      grid-template-columns: 80px 1fr 100px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-primary);
+    }
+
+    .excel-example-header-cell {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-weight: 600;
+      font-size: var(--font-size-xs);
+      color: var(--text-primary);
+      border-right: 1px solid var(--border-primary);
+      text-align: center;
+    }
+
+    .excel-example-header-cell:last-child {
+      border-right: none;
+    }
+
+    .excel-example-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 100px;
+      border-bottom: 1px solid var(--border-primary);
+    }
+
+    .excel-example-row:last-child {
+      border-bottom: none;
+    }
+
+    .excel-example-cell {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: var(--font-size-xs);
+      color: var(--text-secondary);
+      border-right: 1px solid var(--border-primary);
+      font-family: var(--font-family-mono);
+      text-align: center;
+    }
+
+    .excel-example-cell:last-child {
+      border-right: none;
+    }
+
+    .excel-example-cell.header {
+      background: var(--bg-tertiary);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .file-input-container {
+      position: relative;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .file-input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .file-input-label {
+      display: block;
+      padding: var(--spacing-md);
+      background: var(--bg-input);
+      border: 1px dashed var(--border-primary);
+      border-radius: var(--radius-sm);
+      text-align: center;
+      cursor: pointer;
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+      transition: border-color var(--transition-fast), background-color var(--transition-fast);
+    }
+
+    .file-input-label:hover {
+      border-color: var(--border-secondary);
+      background: var(--bg-tertiary);
+    }
+
+    #importPreview {
+      margin-top: var(--spacing-md);
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-xs);
+    }
+
+    .preview-item {
+      padding: var(--spacing-sm);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-xs);
+      color: var(--text-secondary);
+    }
+
+    .preview-item strong {
+      color: var(--text-primary);
+    }
+
+    .bulk-download-button {
+      width: 100%;
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: var(--accent-primary);
+      border: 1px solid var(--accent-primary);
+      border-radius: var(--radius-sm);
+      color: var(--text-inverted);
+      font-weight: 500;
+      font-size: var(--font-size-sm);
+      cursor: pointer;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+      display: none;
+      margin-top: var(--spacing-md);
+    }
+
+    .bulk-download-button.active {
+      display: block;
+    }
+
+    .bulk-download-button:hover:not(:disabled) {
+      background: var(--accent-secondary);
+      border-color: var(--accent-secondary);
+    }
+
+    .bulk-download-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .char-counter {
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      margin-top: var(--spacing-xs);
+    }
+
+    .char-counter.error {
+      color: var(--accent-error);
+    }
+
+    .title-color-picker {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin-top: var(--spacing-sm);
+    }
+
+    .title-color-picker label {
+      font-size: var(--font-size-xs);
+      color: var(--text-secondary);
+    }
+
+    .title-color-picker input[type="color"] {
+      width: 40px;
+      height: 30px;
+      padding: 0;
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+
+
+    @font-face {
+      font-family: 'Inter';
+      src: url('https://cdnjs.cloudflare.com/ajax/libs/inter/3.19.3/UltraLight/Inter-UltraLight.woff2') format('woff2');
+      font-weight: 200;
+    }
+
+    @media (max-width: 640px) {
+      .tabs-container {
+        display: none;
+      }
+
+      .tabs-dropdown {
+        display: block;
+      }
+
+      .excel-example-header,
+      .excel-example-row {
+        grid-template-columns: 60px 1fr 80px;
+        font-size: var(--font-size-xs);
+      }
+
+      .excel-example-cell {
+        padding: var(--spacing-xs);
+        word-break: break-all;
+      }
+
+      .title-in-qr-container {
+        width: 250px;
+        height: 250px;
+      }
+
+      .title-in-qr-text {
+        width: 75px;
+        height: 35px;
+        font-size: 16px;
+      }
+
+      .wifi-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .template-download-section {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-xs);
+      }
+
+      .template-download-button {
+        width: 100%;
+      }
+
+      .result-qrcode-container canvas {
+        max-width: 180px;
+        width: 180px;
+        height: 180px;
+      }
+
+      .result-qrcode-container .title-in-qr-container {
+        max-width: 180px;
+        width: 180px;
+        height: 180px;
+      }
+    }
+  </style>
 </head>
-<body data-theme="dark">
+<body>
   <nav class="navbar">
     <div class="navbar-content">
       <div class="navbar-brand">
@@ -20,18 +481,56 @@
         <span class="navbar-tag">developed by <a href="https://euoryan.com" class="navbar-tag-link">euoryan.com</a></span>
       </div>
       <div class="navbar-actions">
-        <div class="theme-toggle-wrapper">
-          <span class="theme-toggle-label" id="themeToggleLabel">Dark mode</span>
-          <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema">
-            <span class="theme-toggle-slider"></span>
-          </button>
-        </div>
         <button class="privacy-toggle" id="privacyToggle" aria-label="Alternar privacidade" title="Ocultar/Mostrar QR Codes">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" id="privacyIcon" viewBox="0 0 16 16">
-            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
-            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-fill" id="privacyIcon" viewBox="0 0 16 16">
+            <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+            <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash-fill" id="privacyIconSlash" viewBox="0 0 16 16" style="display: none;">
+            <path d="m10.79 12.912-1.614-1.615a3.5 3.5 0 0 1-4.474-4.474l-2.06-2.06C.938 6.278 0 8 0 8s3 5.5 8 5.5a7 7 0 0 0 2.79-.588M5.21 3.088A7 7 0 0 1 8 2.5c5 0 8 5.5 8 5.5s-.939 1.721-2.641 3.238l-2.062-2.062a3.5 3.5 0 0 0-4.474-4.474z"/>
+            <path d="M5.525 7.646a2.5 2.5 0 0 0 2.829 2.829zm4.95.708-2.829-2.83a2.5 2.5 0 0 1 2.829 2.829zm3.171 6-12-12 .708-.708 12 12z"/>
           </svg>
         </button>
+        <button class="reset-button" id="resetButton" aria-label="Descarregar" title="Limpar todos os dados salvos e resetar a página">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+            <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
+          </svg>
+        </button>
+        <div class="theme-dropdown-wrapper">
+          <button class="theme-toggle-icon" id="themeToggle" aria-label="Alternar tema" title="Selecionar tema">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sun-fill theme-icon-sun" viewBox="0 0 16 16">
+              <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-moon-stars-fill theme-icon-moon" viewBox="0 0 16 16">
+              <path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278"/>
+              <path d="M10.794 3.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387a1.73 1.73 0 0 0-1.097 1.097l-.387 1.162a.217.217 0 0 1-.412 0l-.387-1.162A1.73 1.73 0 0 0 9.31 6.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387a1.73 1.73 0 0 0 1.097-1.097zM13.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732l-.774-.258a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle-half theme-icon-system" viewBox="0 0 16 16">
+              <path d="M8 15A7 7 0 1 0 8 1zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16"/>
+            </svg>
+          </button>
+          <div class="theme-dropdown" id="themeDropdown">
+            <button class="theme-option" data-theme="system">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 0 8 1zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16"/>
+              </svg>
+              <span>Sistema</span>
+            </button>
+            <button class="theme-option" data-theme="light">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708"/>
+              </svg>
+              <span>Claro</span>
+            </button>
+            <button class="theme-option" data-theme="dark">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278"/>
+                <path d="M10.794 3.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387a1.73 1.73 0 0 0-1.097 1.097l-.387 1.162a.217.217 0 0 1-.412 0l-.387-1.162A1.73 1.73 0 0 0 9.31 6.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387a1.73 1.73 0 0 0 1.097-1.097zM13.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732l-.774-.258a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/>
+              </svg>
+              <span>Escuro</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -40,58 +539,304 @@
     <section class="generator-section">
       <header class="generator-header">
         <h1 class="generator-title">Gerador QR Code</h1>
-        <p class="generator-subtitle">Digite ou cole o link/URL para gerar o QR Code</p>
+        <p class="generator-subtitle">Escolha o tipo de QR Code que deseja gerar</p>
       </header>
 
-      <div class="input-section">
-        <div class="options-accordion">
-          <button class="options-accordion-header" type="button">
-            <span class="options-accordion-title">Opções</span>
-            <span class="options-accordion-icon">+</span>
-          </button>
-          <div class="options-accordion-content">
-            <div class="option-item">
-              <label for="logoUpload" class="option-label">
-                <span class="option-label-text">Logo central (PNG)</span>
-                <input type="file" id="logoUpload" accept="image/png" class="option-file-input">
-                <span class="option-file-label" id="logoFileLabel">Nenhum arquivo selecionado</span>
-              </label>
-              <button type="button" class="option-remove-logo" id="removeLogoBtn" style="display: none;">Remover logo</button>
+      <div class="tabs-container">
+        <button class="tab-button active" data-tab="url-photo">URL com Foto</button>
+        <button class="tab-button" data-tab="url-title">URL com Título</button>
+        <button class="tab-button" data-tab="bulk">Em Massa (Excel)</button>
+        <button class="tab-button" data-tab="wifi">WiFi</button>
+      </div>
+
+      <div class="tabs-dropdown">
+        <select id="tabsDropdown">
+          <option value="url-photo">URL com Foto</option>
+          <option value="url-title">URL com Título</option>
+          <option value="bulk">Em Massa (Excel)</option>
+          <option value="wifi">WiFi</option>
+        </select>
+      </div>
+
+      <!-- Tab 1: URL com Foto -->
+      <div class="tab-content active" id="tab-url-photo">
+        <div class="input-section">
+          <div class="options-accordion">
+            <button class="options-accordion-header" type="button">
+              <span class="options-accordion-title">Opções</span>
+              <span class="options-accordion-icon">+</span>
+            </button>
+            <div class="options-accordion-content">
+              <div class="option-item">
+                <label for="logoUpload" class="option-label">
+                  <span class="option-label-text">Logo central (PNG)</span>
+                  <input type="file" id="logoUpload" accept="image/png" class="option-file-input">
+                  <span class="option-file-label" id="logoFileLabel">Nenhum arquivo selecionado</span>
+                </label>
+                <button type="button" class="option-remove-logo" id="removeLogoBtn" style="display: none;">Remover logo</button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="input-group">
-          <label for="nameInputField" class="input-label">Nome</label>
-          <div class="input-wrapper">
-            <input 
-              type="text" 
-              id="nameInputField" 
-              class="name-input"
-              placeholder="QR Code"
-              maxlength="30"
-            >
+          <div class="input-group">
+            <label for="nameInputField" class="input-label">Nome</label>
+            <div class="input-wrapper">
+              <input 
+                type="text" 
+                id="nameInputField" 
+                class="name-input"
+                placeholder="QR Code"
+                maxlength="30"
+              >
+            </div>
           </div>
-        </div>
 
-        <div class="input-group">
-          <label for="urlInput" class="input-label">URL / Link</label>
-          <div class="input-wrapper">
-            <input 
-              type="url" 
-              id="urlInput" 
-              class="url-input"
-              placeholder="https://exemplo.com"
-              autocomplete="off"
-              spellcheck="false"
-            >
+          <div class="input-group">
+            <label for="urlInput" class="input-label">URL / Link</label>
+            <div class="input-wrapper">
+              <input 
+                type="url" 
+                id="urlInput" 
+                class="url-input"
+                placeholder="https://exemplo.com"
+                autocomplete="off"
+                spellcheck="false"
+              >
+            </div>
           </div>
+          
+          <button class="generate-button" id="generateButton" type="button">
+            <div class="spinner"></div>
+            <span class="button-text">Gerar QR Code</span>
+          </button>
         </div>
-        
-        <button class="generate-button" id="generateButton" type="button">
-          <div class="spinner"></div>
-          <span class="button-text">Gerar QR Code</span>
-        </button>
+      </div>
+
+      <!-- Tab 2: URL com Título -->
+      <div class="tab-content" id="tab-url-title">
+        <div class="input-section">
+          <div class="options-accordion">
+            <button class="options-accordion-header" type="button">
+              <span class="options-accordion-title">Opções</span>
+              <span class="options-accordion-icon">+</span>
+            </button>
+            <div class="options-accordion-content">
+              <div class="title-color-picker">
+                <label>Cor do texto do título:</label>
+                <input type="color" id="titleColor" value="#003366">
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="titleInput" class="input-label">Título (máx. 5 caracteres)</label>
+            <div class="input-wrapper">
+              <input 
+                type="text" 
+                id="titleInput" 
+                class="name-input"
+                placeholder="Digite o título"
+                maxlength="5"
+              >
+              <div class="char-counter" id="charCounter">0/5 caracteres</div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="urlInputTitle" class="input-label">URL / Link</label>
+            <div class="input-wrapper">
+              <input 
+                type="url" 
+                id="urlInputTitle" 
+                class="url-input"
+                placeholder="https://exemplo.com"
+                autocomplete="off"
+                spellcheck="false"
+              >
+            </div>
+          </div>
+          
+          <button class="generate-button" id="generateButtonTitle" type="button">
+            <div class="spinner"></div>
+            <span class="button-text">Gerar QR Code</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab 3: Em Massa (Excel) -->
+      <div class="tab-content" id="tab-bulk">
+        <div class="input-section">
+          <div class="info-accordion excel-instructions">
+            <button class="info-accordion-header" type="button">
+              <span class="info-accordion-title">Instruções</span>
+              <span class="info-accordion-icon">+</span>
+            </button>
+            <div class="info-accordion-content">
+              <div class="excel-column-info">
+                <div class="excel-column-item">
+                  <div class="excel-column-name">title (obrigatório)</div>
+                  <div class="excel-column-desc">
+                    Título que aparecerá no centro do QR Code. <strong>Máximo de 5 caracteres.</strong> 
+                    Se o título tiver mais de 5 caracteres, será ignorado. Exemplos: "EX01", "PROD", "LINK1"
+                  </div>
+                </div>
+                <div class="excel-column-item">
+                  <div class="excel-column-name">url (obrigatório)</div>
+                  <div class="excel-column-desc">
+                    URL completa que o QR Code deve abrir. Deve começar com http:// ou https://. 
+                    Exemplos: "https://exemplo.com", "https://site.com.br/produto"
+                  </div>
+                </div>
+                <div class="excel-column-item">
+                  <div class="excel-column-name">addTitle (opcional)</div>
+                  <div class="excel-column-desc">
+                    Define se o título aparecerá no centro do QR Code. Use <strong>true</strong> ou <strong>1</strong> para sim, 
+                    <strong>false</strong> ou <strong>0</strong> para não. Se não preencher, será considerado false.
+                  </div>
+                </div>
+              </div>
+              <div class="excel-example-table">
+                <div class="excel-example-header">
+                  <div class="excel-example-header-cell">title</div>
+                  <div class="excel-example-header-cell">url</div>
+                  <div class="excel-example-header-cell">addTitle</div>
+                </div>
+                <div class="excel-example-row">
+                  <div class="excel-example-cell">EX01</div>
+                  <div class="excel-example-cell">https://exemplo.com/item1</div>
+                  <div class="excel-example-cell">true</div>
+                </div>
+                <div class="excel-example-row">
+                  <div class="excel-example-cell">PROD</div>
+                  <div class="excel-example-cell">https://site.com.br/produto</div>
+                  <div class="excel-example-cell">false</div>
+                </div>
+                <div class="excel-example-row">
+                  <div class="excel-example-cell">LINK</div>
+                  <div class="excel-example-cell">https://exemplo.com/pagina</div>
+                  <div class="excel-example-cell">1</div>
+                </div>
+              </div>
+              <div style="margin-top: var(--spacing-sm); padding-top: var(--spacing-sm); border-top: 1px solid var(--border-primary);">
+                <p style="font-size: var(--font-size-xs); color: var(--text-secondary); margin: 0; line-height: 1.4;">
+                  <strong>Importante:</strong> O título no centro do QR Code é limitado a 5 caracteres. 
+                  Títulos maiores serão automaticamente ignorados na importação.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="excelFile" class="input-label">Arquivo Excel</label>
+            <div class="file-input-container">
+              <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls">
+              <label for="excelFile" class="file-input-label">
+                Selecione ou arraste um arquivo Excel
+              </label>
+            </div>
+            <div class="template-download-section" style="margin-top: var(--spacing-sm);">
+              <button class="template-download-button" id="downloadTemplateBtn">
+                Baixar Template Excel
+              </button>
+              <span style="font-size: var(--font-size-xs); color: var(--text-tertiary);">
+                Template com exemplos preenchidos
+              </span>
+            </div>
+          </div>
+
+          <div id="importPreview"></div>
+          
+          <button id="bulkDownload" class="bulk-download-button">
+            Baixar todos os QR Codes (ZIP)
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab 4: WiFi -->
+      <div class="tab-content" id="tab-wifi">
+        <div class="input-section">
+          <div class="options-accordion">
+            <button class="options-accordion-header" type="button">
+              <span class="options-accordion-title">Opções</span>
+              <span class="options-accordion-icon">+</span>
+            </button>
+            <div class="options-accordion-content">
+              <div class="option-item">
+                <label for="wifiCustomType" class="input-label" style="font-size: var(--font-size-xs); margin-bottom: var(--spacing-xs);">Personalização do centro</label>
+                <select id="wifiCustomType" class="url-input" style="font-size: var(--font-size-xs);">
+                  <option value="title">Adicionar título no centro</option>
+                  <option value="logo">Adicionar logo no centro</option>
+                </select>
+              </div>
+              <div class="option-item" id="wifiTitleOptions" style="display: block;">
+                <label for="wifiTitleInput" class="input-label" style="font-size: var(--font-size-xs);">Título (máx. 5 caracteres)</label>
+                <input 
+                  type="text" 
+                  id="wifiTitleInput" 
+                  class="name-input"
+                  placeholder="WiFi"
+                  maxlength="5"
+                  style="font-size: var(--font-size-xs); padding: var(--spacing-sm);"
+                >
+                <div class="title-color-picker">
+                  <label>Cor do texto:</label>
+                  <input type="color" id="wifiTitleColor" value="#003366">
+                </div>
+              </div>
+              <div class="option-item" id="wifiLogoOptions" style="display: none;">
+                <label for="wifiLogoUpload" class="option-label">
+                  <span class="option-label-text">Logo central (PNG)</span>
+                  <input type="file" id="wifiLogoUpload" accept="image/png" class="option-file-input">
+                  <span class="option-file-label" id="wifiLogoFileLabel">Nenhum arquivo selecionado</span>
+                </label>
+                <button type="button" class="option-remove-logo" id="removeWifiLogoBtn" style="display: none;">Remover logo</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="wifiName" class="input-label">Nome da Rede (SSID)</label>
+            <div class="input-wrapper">
+              <input 
+                type="text" 
+                id="wifiName" 
+                class="name-input"
+                placeholder="MinhaRedeWiFi"
+                maxlength="30"
+              >
+            </div>
+          </div>
+
+          <div class="wifi-form-grid">
+            <div class="input-group">
+              <label for="wifiPassword" class="input-label">Senha</label>
+              <div class="input-wrapper">
+                <input 
+                  type="text" 
+                  id="wifiPassword" 
+                  class="url-input"
+                  placeholder="senha123"
+                >
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="wifiSecurity" class="input-label">Segurança</label>
+              <div class="input-wrapper">
+                <select id="wifiSecurity" class="url-input">
+                  <option value="WPA">WPA/WPA2</option>
+                  <option value="WEP">WEP</option>
+                  <option value="nopass">Sem senha</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <button class="generate-button" id="generateButtonWifi" type="button">
+            <div class="spinner"></div>
+            <span class="button-text">Gerar QR Code WiFi</span>
+          </button>
+        </div>
       </div>
 
       <section class="result-section" id="resultSection">
@@ -99,6 +844,7 @@
           <div class="result-label">QR Code</div>
           <div class="result-qrcode-container">
             <canvas id="qrcodeCanvas" class="qrcode-clickable"></canvas>
+            <div id="qrcodeTitleContainer" class="title-in-qr-container" style="display: none;"></div>
           </div>
         </div>
         
@@ -117,33 +863,33 @@
       </section>
 
       <section class="info-section">
-      <div class="info-accordion">
-        <button class="info-accordion-header" type="button">
-          <span class="info-accordion-title">Instruções</span>
-          <span class="info-accordion-icon">+</span>
-        </button>
-        <div class="info-accordion-content">
-          <ul class="info-list">
-            <li>Digite ou cole a URL/link no campo acima</li>
-            <li>Opcionalmente, adicione um logo PNG no centro do QR Code</li>
-            <li>Clique em "Gerar QR Code" para criar o código</li>
-            <li>Baixe o QR Code gerado em formato PNG</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="info-accordion">
-        <button class="info-accordion-header" type="button">
-          <span class="info-accordion-title">O que é QR Code?</span>
-          <span class="info-accordion-icon">+</span>
-        </button>
-        <div class="info-accordion-content">
-          <div class="info-content">
-            <p>QR Code (Quick Response Code) é um código de barras bidimensional que pode ser escaneado por dispositivos móveis para acessar informações rapidamente. Os QR Codes são amplamente utilizados para compartilhar URLs, informações de contato, textos e muito mais.</p>
-            <p>Este gerador permite criar QR Codes personalizados com logo central, facilitando a identificação e personalização do código. Os QR Codes gerados podem ser salvos como imagens PNG e utilizados em materiais impressos ou digitais.</p>
+        <div class="info-accordion">
+          <button class="info-accordion-header" type="button">
+            <span class="info-accordion-title">Instruções</span>
+            <span class="info-accordion-icon">+</span>
+          </button>
+          <div class="info-accordion-content">
+            <ul class="info-list">
+              <li><strong>URL com Foto:</strong> Gere QR Codes de URLs com logo personalizado no centro</li>
+              <li><strong>URL com Título:</strong> Gere QR Codes de URLs com título de até 5 caracteres no centro</li>
+              <li><strong>Em Massa:</strong> Importe um arquivo Excel para gerar múltiplos QR Codes de uma vez</li>
+              <li><strong>WiFi:</strong> Gere QR Codes para conexão WiFi automática com título ou logo</li>
+            </ul>
           </div>
         </div>
-      </div>
+
+        <div class="info-accordion">
+          <button class="info-accordion-header" type="button">
+            <span class="info-accordion-title">O que é QR Code?</span>
+            <span class="info-accordion-icon">+</span>
+          </button>
+          <div class="info-accordion-content">
+            <div class="info-content">
+              <p>QR Code (Quick Response Code) é um código de barras bidimensional que pode ser escaneado por dispositivos móveis para acessar informações rapidamente. Os QR Codes são amplamente utilizados para compartilhar URLs, informações de contato, textos e muito mais.</p>
+              <p>Este gerador permite criar QR Codes personalizados com logo ou título central, facilitando a identificação e personalização do código. Os QR Codes gerados podem ser salvos como imagens PNG ou SVG e utilizados em materiais impressos ou digitais.</p>
+            </div>
+          </div>
+        </div>
       </section>
     </section>
 
@@ -202,4 +948,3 @@
   <script src="./assets/js/script.js"></script>
 </body>
 </html>
-
